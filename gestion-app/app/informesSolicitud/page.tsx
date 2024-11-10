@@ -1,23 +1,24 @@
-// pages/informeSolicitud.tsx
-'use client'; // Asegúrate de que este es el primer código en el archivo.
+'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from '../styles/informeSolicitud.css';
 
 interface Course {
     name: string;
     prof: string;
+    prof_email: string;
+    prof_phone: string;
     unit: string;
     contract: string;
     percentage: number;
 }
 
-interface CourseSectionProps {
+interface CourseSectionData {
     code: string;
     courses: Course[];
 }
 
-const CourseSection: React.FC<CourseSectionProps> = ({ code, courses }) => (
+const CourseSection: React.FC<CourseSectionData> = ({ code, courses }) => (
     <div className='courseSection'>
         <div className='codeRow'>código <span className='code'>{code}</span></div>
         <table className='table'>
@@ -25,6 +26,8 @@ const CourseSection: React.FC<CourseSectionProps> = ({ code, courses }) => (
                 <tr>
                     <th className='header'>nombre</th>
                     <th className='header'>Prof</th>
+                    <th className='header'>Email</th>
+                    <th className='header'>Teléfono</th>
                     <th className='header'>unidad</th>
                     <th className='header'>contrato</th>
                     <th className='header'>%</th>
@@ -35,6 +38,8 @@ const CourseSection: React.FC<CourseSectionProps> = ({ code, courses }) => (
                     <tr key={index}>
                         <td className='cell'>{course.name}</td>
                         <td className='cell'>{course.prof}</td>
+                        <td className='cell'>{course.prof_email}</td>
+                        <td className='cell'>{course.prof_phone}</td>
                         <td className='cell'>{course.unit}</td>
                         <td className='cell'>{course.contract}</td>
                         <td className='cell'>{course.percentage}</td>
@@ -46,6 +51,31 @@ const CourseSection: React.FC<CourseSectionProps> = ({ code, courses }) => (
 );
 
 const InformeSolicitud: React.FC = () => {
+    const [coursesData, setCoursesData] = useState<CourseSectionData[]>([]);
+
+    useEffect(() => {
+        const fetchCourses = async () => {
+            try {
+                const res = await fetch('/api/getCourses');
+                const data: { code: string; name: string; prof: string; prof_email: string; prof_phone: string; unit: string; contract: string; percentage: number }[] = await res.json();
+
+                // Agrupar los cursos por código
+                const groupedCourses: Record<string, CourseSectionData> = {};
+                data.forEach((course) => {
+                    const { code, ...courseData } = course;
+                    if (!groupedCourses[code]) groupedCourses[code] = { code, courses: [] };
+                    groupedCourses[code].courses.push(courseData);
+                });
+
+                setCoursesData(Object.values(groupedCourses));
+            } catch (error) {
+                console.error('Error al obtener datos de cursos:', error);
+            }
+        };
+
+        fetchCourses();
+    }, []);
+
     const handleGeneratePDF = async () => {
         const res = await fetch('/api/generatePDF', {
             method: 'POST',
@@ -67,13 +97,9 @@ const InformeSolicitud: React.FC = () => {
 
     return (
         <div className='container'>
-            <CourseSection
-                code="IOCC038-17"
-                courses={[
-                    { name: "TALLER DE INGENIERÍA II", prof: "Pena", unit: "IOCC", contract: "HON", percentage: 50 },
-                    { name: "TALLER DE INGENIERÍA II", prof: "Muñoz", unit: "IOCC", contract: "PAD", percentage: 50 },
-                ]}
-            />
+            {coursesData.map((section, index) => (
+                <CourseSection key={index} code={section.code} courses={section.courses} />
+            ))}
             <button onClick={handleGeneratePDF} className={styles.button}>Generar PDF</button>
         </div>
     );
